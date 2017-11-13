@@ -1,0 +1,7 @@
+<configuration>
+    <property scope="context" name="log_dir" value="logs" />
+    <property scope="context" name="log_level" value="DEBUG" />
+
+    <include resource="logger/included.xml"/>
+
+</configuration>
