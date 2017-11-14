@@ -1,101 +1,98 @@
 package cassandra.changelog_manager.services
 
-import org.specs2.mock.Mockito
-import org.specs2.mutable.Specification
 
-class ChangelogApplier_CqlScriptToQueries_Test extends Specification with Mockito {
+import org.mockito.Mockito._
+import org.scalatest.FlatSpec
+import org.scalatest.mockito.MockitoSugar
+
+class ChangelogApplier_CqlScriptToQueries_Test extends FlatSpec with MockitoSugar {
 
   class MockedChangelogApplier extends ChangelogApplier {
     override def cqlScriptToQueries(script: String): List[String] = super.cqlScriptToQueries(script)
   }
 
-  "ChangelogApplier.cqlScriptToQueries" should {
-    val splitComment = """-- cassandra-changelog-manager statement"""
-    "return one query if there is only one" in {
-      //GIVEN
-      val query = "SELECT * FROM table;"
-      val cqlScript =
-        s"""$splitComment
-           |$query""".stripMargin
 
-      val mockedChangelogApplier = spy(new MockedChangelogApplier)
+  val splitComment = """-- cassandra-changelog-manager statement"""
+  "ChangelogApplier.cqlScriptToQueries" should "return one query if there is only one" in {
+    //GIVEN
+    val query = "SELECT * FROM table;"
+    val cqlScript =
+      s"""$splitComment
+         |$query""".stripMargin
 
-      //WHEN
-      val result = mockedChangelogApplier.cqlScriptToQueries(cqlScript)
+    val mockedChangelogApplier = spy(new MockedChangelogApplier)
 
-      //THEN
-      result shouldEqual List(query)
-      success
-    }
+    //WHEN
+    val result = mockedChangelogApplier.cqlScriptToQueries(cqlScript)
 
-    "return multiple queries" in {
-      //GIVEN
-      val query = "SELECT * FROM table;"
-      val query2 = "SELECT * FROM table2;"
-      val cqlScript =
-        s"""$splitComment
-           |$query
-           |$splitComment
-           |$query2
+    //THEN
+    assert(result.equals(List(query)))
+  }
+
+  "ChangelogApplier.cqlScriptToQueries" should "return multiple queries" in {
+    //GIVEN
+    val query = "SELECT * FROM table;"
+    val query2 = "SELECT * FROM table2;"
+    val cqlScript =
+      s"""$splitComment
+         |$query
+         |$splitComment
+         |$query2
          """.stripMargin
 
-      val mockedChangelogApplier = spy(new MockedChangelogApplier)
+    val mockedChangelogApplier = spy(new MockedChangelogApplier)
 
-      //WHEN
-      val result = mockedChangelogApplier.cqlScriptToQueries(cqlScript)
+    //WHEN
+    val result = mockedChangelogApplier.cqlScriptToQueries(cqlScript)
 
-      //THEN
-      result shouldEqual List(query, query2)
-      success
-    }
+    //THEN
+    assert(result.equals(List(query, query2)))
+  }
 
-    "return multiple queries when trailling white spaces" in {
-      //GIVEN
-      val query = "SELECT * FROM table;"
-      val query2 = "SELECT * FROM table2;"
-      val cqlScript =
-        s"""$splitComment
-           |$query
-           |$splitComment
-           |$query2
+  "ChangelogApplier.cqlScriptToQueries" should "return multiple queries when trailling white spaces" in {
+    //GIVEN
+    val query = "SELECT * FROM table;"
+    val query2 = "SELECT * FROM table2;"
+    val cqlScript =
+      s"""$splitComment
+         |$query
+         |$splitComment
+         |$query2
          """.stripMargin
 
-      val mockedChangelogApplier = spy(new MockedChangelogApplier)
+    val mockedChangelogApplier = spy(new MockedChangelogApplier)
 
-      //WHEN
-      val result = mockedChangelogApplier.cqlScriptToQueries(cqlScript)
+    //WHEN
+    val result = mockedChangelogApplier.cqlScriptToQueries(cqlScript)
 
-      //THEN
-      result shouldEqual List(query, query2)
-      success
-    }
+    //THEN
+    assert(result.equals(List(query, query2)))
+  }
 
-    "return multiple queries when empty lines" in {
-      //GIVEN
-      val query = "SELECT * FROM table;"
-      val query2 = "SELECT * FROM table2;"
-      val cqlScript =
-        s"""
-           |
+  "ChangelogApplier.cqlScriptToQueries" should "return multiple queries when empty lines" in {
+    //GIVEN
+    val query = "SELECT * FROM table;"
+    val query2 = "SELECT * FROM table2;"
+    val cqlScript =
+      s"""
+         |
            |$splitComment
-           |
+         |
            |$query
-           |
+         |
            |$splitComment
-           |
+         |
            |
            |$query2
-           |
+         |
          """.stripMargin
 
-      val mockedChangelogApplier = spy(new MockedChangelogApplier)
+    val mockedChangelogApplier = spy(new MockedChangelogApplier)
 
-      //WHEN
-      val result = mockedChangelogApplier.cqlScriptToQueries(cqlScript)
+    //WHEN
+    val result = mockedChangelogApplier.cqlScriptToQueries(cqlScript)
 
-      //THEN
-      result shouldEqual List(query, query2)
-      success
-    }
+    //THEN
+    assert(result.equals(List(query, query2)))
   }
 }

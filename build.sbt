@@ -9,10 +9,12 @@ libraryDependencies ++= Seq(
   "com.typesafe" % "config" % "1.3.1",
   "ch.qos.logback" % "logback-classic" % "1.2.3",
   "com.typesafe.scala-logging" %% "scala-logging" % "3.7.2",
-  "org.specs2" %% "specs2-core" % "4.0.0" % "test",
-  "org.specs2" %% "specs2-mock" % "4.0.0" % "test"
+  "org.scalatest" % "scalatest_2.12" % "3.0.4" % "test",
+  "org.mockito" % "mockito-core" % "2.12.0" % "test"
+
 )
 
+parallelExecution in Test := false
 
 mainClass in assembly := Some("Main")
 

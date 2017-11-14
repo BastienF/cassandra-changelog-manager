@@ -7,17 +7,18 @@ import java.util.Date
 import cassandra.changelog_manager.cassandra.database.CassandraDatabase
 import cassandra.changelog_manager.cassandra.models.SchemaVersion
 import cassandra.changelog_manager.cassandra.repository.SchemaVersionRepo
+import cassandra.changelog_manager.testutil.MockGenerator._
+import cassandra.changelog_manager.utils.CqlExecutionException
 import com.datastax.driver.core.ConsistencyLevel
 import com.datastax.driver.core.exceptions.ReadTimeoutException
 import com.google.common.io.ByteSource
 import com.typesafe.scalalogging.Logger
+import org.mockito.Mockito._
+import org.scalatest.FlatSpec
+import org.scalatest.mockito.MockitoSugar
 import org.slf4j.{Logger => MockableLogger}
-import org.specs2.mock.Mockito
-import org.specs2.mutable.Specification
-import cassandra.changelog_manager.testutil.MockGenerator._
-import cassandra.changelog_manager.utils.CqlExecutionException
 
-class ChangelogApplier_ExecuteCQLStatements_Test extends Specification with Mockito {
+class ChangelogApplier_ExecuteCQLStatements_Test extends FlatSpec with MockitoSugar {
 
   class MockedChangelogApplier(mockedLogger: MockableLogger, mockedDate: Date) extends ChangelogApplier {
 
@@ -36,75 +37,70 @@ class ChangelogApplier_ExecuteCQLStatements_Test extends Specification with Mock
     override protected def getCurrentDate: Date = mockedDate
   }
 
-  "ChangelogApplier.executeCQLStatments" should {
-    "return true and execute some cql script on all sessions" in {
-      //GIVEN
-      val cqlFile = mockFile("TestCQL")
-      val cqlScript = "SELECT * FROM sometable;"
-      cqlFile.toString returns cqlScript
+  "ChangelogApplier.executeCQLStatments" should "return true and execute some cql script on all sessions" in {
+    //GIVEN
+    val cqlFile = mockFile("TestCQL")
+    val cqlScript = "SELECT * FROM sometable;"
+    when(cqlFile.toString).thenReturn(cqlScript)
 
-      val (session1, boundStatement1) = mockSessionWithBoundStatement(cqlScript)
-      val (session2, boundStatement2) = mockSessionWithBoundStatement(cqlScript)
-      val schemaVersionRepo = mock[SchemaVersionRepo]
-      val cassandraDatabase = mockCassandraDatabase(Seq(session1, session2), schemaVersionRepo)
+    val (session1, boundStatement1) = mockSessionWithBoundStatement(cqlScript)
+    val (session2, boundStatement2) = mockSessionWithBoundStatement(cqlScript)
+    val schemaVersionRepo = mock[SchemaVersionRepo]
+    val cassandraDatabase = mockCassandraDatabase(Seq(session1, session2), schemaVersionRepo)
 
-      val date = Date.from(Instant.now())
-      val schemaVersion = SchemaVersion("v0", cqlFile.getName, "6120c242ff60bc066f7c53ed0403bd37", "", date, 0, "success")
+    val date = Date.from(Instant.now())
+    val schemaVersion = SchemaVersion("v0", cqlFile.getName, "6120c242ff60bc066f7c53ed0403bd37", "", date, 0, "success")
 
-      val logger = mockLogger()
+    val logger = mockLogger()
 
-      val mockedChangelogApplier = spy(new MockedChangelogApplier(logger, date))
-      //WHEN
-      val result = mockedChangelogApplier.executeCQLStatements(cqlFile, cassandraDatabase)
+    val mockedChangelogApplier = spy(new MockedChangelogApplier(logger, date))
+    //WHEN
+    val result = mockedChangelogApplier.executeCQLStatements(cqlFile, cassandraDatabase)
 
-      //THEN
-      result shouldEqual true
-      there was one(mockedChangelogApplier).readFile(cqlFile)
-      there was one(session1).prepare(cqlScript)
-      there was one(session2).prepare(cqlScript)
-      there was one(session1).execute(boundStatement1)
-      there was one(session2).execute(boundStatement2)
-      there was one(schemaVersionRepo).insert(schemaVersion)
-      there was one(logger).info("{} executed with success", "TestCQL")
+    //THEN
+    assert(result)
+    verify(mockedChangelogApplier).readFile(cqlFile)
+    verify(session1).prepare(cqlScript)
+    verify(session2).prepare(cqlScript)
+    verify(session1).execute(boundStatement1)
+    verify(session2).execute(boundStatement2)
+    verify(schemaVersionRepo).insert(schemaVersion)
+    verify(logger).info("{} executed with success", "TestCQL")
+  }
 
-      success
+  "ChangelogApplier.executeCQLStatments" should "return throw an error and stop on first error" in {
+
+    //GIVEN
+    val cqlFile = mockFile("TestCQL")
+    val cqlScript = "SELECT * FROM sometable;"
+    val exception = new ReadTimeoutException(null, ConsistencyLevel.ANY, 10, 0, false)
+
+    val (session1, boundStatement1) = mockSessionWithBoundStatement(cqlScript)
+    val (session2, boundStatement2) = mockSessionWithBoundStatement(cqlScript)
+    val schemaVersionRepo = mock[SchemaVersionRepo]
+
+    when(session1.execute(boundStatement1)).thenThrow(exception)
+    when(session1.getLoggedKeyspace).thenReturn("keyspace1")
+
+    val cassandraDatabase = mockCassandraDatabase(Seq(session1, session2), schemaVersionRepo)
+
+    val logger = mockLogger()
+
+    val mockedChangelogApplier = spy(new MockedChangelogApplier(logger, null))
+    //WHEN
+    assertThrows[CqlExecutionException] {
+      mockedChangelogApplier.executeCQLStatements(cqlFile, cassandraDatabase)
     }
 
-    "return throw an error and stop on first error" in {
-
-      //GIVEN
-      val cqlFile = mockFile("TestCQL")
-      val cqlScript = "SELECT * FROM sometable;"
-      val exception = new ReadTimeoutException(null, ConsistencyLevel.ANY, 10, 0, false)
-
-      val (session1, boundStatement1) = mockSessionWithBoundStatement(cqlScript)
-      val (session2, boundStatement2) = mockSessionWithBoundStatement(cqlScript)
-      val schemaVersionRepo = mock[SchemaVersionRepo]
-
-      session1.execute(boundStatement1) throws exception
-      session1.getLoggedKeyspace returns "keyspace1"
-
-      val cassandraDatabase = mockCassandraDatabase(Seq(session1, session2), schemaVersionRepo)
-
-      val logger = mockLogger()
-
-      val mockedChangelogApplier = spy(new MockedChangelogApplier(logger, null))
-      //WHEN
-      mockedChangelogApplier.executeCQLStatements(cqlFile, cassandraDatabase) must throwA(CqlExecutionException("TestCQL", "keyspace1", exception))
-
-      //THEN
-      there was one(mockedChangelogApplier).readFile(cqlFile)
-      there was one(session1).prepare("SELECT * FROM sometable;")
-      there was no(session2).prepare("SELECT * FROM sometable;")
-      there was one(session1).execute(boundStatement1)
-      there was no(session2).execute(boundStatement2)
-      there was no(cassandraDatabase).schemaVersionRepo
-      there was no(logger).info("{} executed with success", "TestCQL")
-      there was one(logger).error("Failure on TestCQL:\n  failed query: SELECT * FROM sometable;\n  exception: com.datastax.driver.core.exceptions.ReadTimeoutException: Cassandra timeout during read query at consistency ANY (the replica queried for data didn't respond)"
-      )
-
-      success
-    }
-
+    //THEN
+    verify(mockedChangelogApplier).readFile(cqlFile)
+    verify(session1).prepare("SELECT * FROM sometable;")
+    verify(session2, never()).prepare("SELECT * FROM sometable;")
+    verify(session1).execute(boundStatement1)
+    verify(session2, never()).execute(boundStatement2)
+    verify(cassandraDatabase, never()).schemaVersionRepo
+    verify(logger, never()).info("{} executed with success", "TestCQL")
+    verify(logger).error("Failure on TestCQL:\n  failed query: SELECT * FROM sometable;\n  exception: com.datastax.driver.core.exceptions.ReadTimeoutException: Cassandra timeout during read query at consistency ANY (the replica queried for data didn't respond)"
+    )
   }
 }
