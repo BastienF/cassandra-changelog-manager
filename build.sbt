@@ -16,7 +16,7 @@ libraryDependencies ++= Seq(
 
 parallelExecution in Test := false
 
-mainClass in assembly := Some("Main")
+mainClass in assembly := Some("cassandra.changelog_manager.Main")
 
 assemblyMergeStrategy in assembly := {
   case x if x.endsWith("io.netty.versions.properties") => MergeStrategy.first
