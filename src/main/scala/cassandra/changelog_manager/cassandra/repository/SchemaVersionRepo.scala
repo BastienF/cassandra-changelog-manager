@@ -7,7 +7,7 @@ import scala.collection.JavaConverters.collectionAsScalaIterableConverter
 
 class SchemaVersionRepo(session: Session) {
 
-  private final lazy val getAllpreparedStatement = session.prepare(s"SELECT * FROM schema_version;")
+  private final lazy val getAllpreparedStatement = session.prepare(s"SELECT * FROM schema_version where app_version = ?;")
   private final lazy val insertStatement = session.prepare(s"INSERT INTO schema_version (app_version, script_name, checksum, executed_by, executed_on, execution_time, status) VALUES (?, ?, ?, ?, ?, ?, ?);")
   private final lazy val initTableStatement = session.prepare(
     """CREATE TABLE IF NOT EXISTS schema_version (
@@ -30,8 +30,8 @@ class SchemaVersionRepo(session: Session) {
   row.getString("status"),
   )
 
-  def getAll: Set[SchemaVersion] = {
-    session.execute(getAllpreparedStatement.bind()).all().asScala.map(schemaVersion).toSet
+  def getAll(appVersion: String): Set[SchemaVersion] = {
+    session.execute(getAllpreparedStatement.bind(appVersion)).all().asScala.map(schemaVersion).toSet
   }
 
   def insert(schemaVersion: SchemaVersion): ResultSet = {

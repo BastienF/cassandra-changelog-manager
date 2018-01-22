@@ -37,15 +37,16 @@ object MockGenerator extends MockitoSugar {
     val cassandraDatabase = mock[CassandraDatabase]
     val schemaVersionRepo = mock[SchemaVersionRepo]
     when(cassandraDatabase.schemaVersionRepo).thenReturn(schemaVersionRepo)
-    when(schemaVersionRepo.getAll).thenReturn(schemaVersions)
+    when(schemaVersionRepo.getAll(cassandraDatabase.appVersion)).thenReturn(schemaVersions)
     cassandraDatabase
   }
 
-  def mockCassandraDatabase(sessions: Seq[Session], schemaVersionRepo: SchemaVersionRepo): CassandraDatabase = {
+  def mockCassandraDatabase(sessions: Seq[Session], schemaVersionRepo: SchemaVersionRepo, appVersion: String = "v0"): CassandraDatabase = {
     val cassandraDatabase = mock[CassandraDatabase]
     when(schemaVersionRepo.getKeyspaceName).thenReturn("admin")
     when(cassandraDatabase.keyspacesSessions).thenReturn(sessions)
     when(cassandraDatabase.schemaVersionRepo).thenReturn(schemaVersionRepo)
+    when(cassandraDatabase.appVersion).thenReturn(appVersion)
     cassandraDatabase
   }
 

@@ -6,8 +6,11 @@ import com.typesafe.config.Config
 import com.typesafe.scalalogging.LazyLogging
 
 import scala.collection.JavaConverters.{asJavaIterableConverter, collectionAsScalaIterableConverter}
+import scala.util.Try
 
 class CassandraDatabase(config: Config) extends LazyLogging {
+  val appVersion: String = Try(config.getString("cassandra.app_version")).getOrElse("v0")
+
   private val hosts = config.getStringList("cassandra.hostnames").asScala.toSeq
   private val port = config.getInt("cassandra.port")
   private val username = config.getString("cassandra.username")

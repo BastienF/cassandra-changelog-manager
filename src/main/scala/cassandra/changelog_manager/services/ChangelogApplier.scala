@@ -18,7 +18,7 @@ protected abstract class ChangelogApplier extends LazyLogging {
 
   def applyChangelogs(cassandraDatabase: CassandraDatabase, changelogDir: File): Boolean = {
     cassandraDatabase.schemaVersionRepo.initTable()
-    val appliedVersions = cassandraDatabase.schemaVersionRepo.getAll
+    val appliedVersions = cassandraDatabase.schemaVersionRepo.getAll(cassandraDatabase.appVersion)
     val cqlFiles = currentChangelogVersionDir(changelogDir).listFiles.filter(_.isFile).toList
     val alteredScripts = Try(getAlteredExecutedScripts(cqlFiles, appliedVersions))
 
@@ -84,7 +84,7 @@ protected abstract class ChangelogApplier extends LazyLogging {
     )
     logger.info(s"${cqlFile.getName} executed with success")
     try {
-      cassandraDatabase.schemaVersionRepo.insert(SchemaVersion("v0", cqlFile.getName, md5Hash(cqlFile).toString, "", getCurrentDate, 0, "success"))
+      cassandraDatabase.schemaVersionRepo.insert(SchemaVersion(cassandraDatabase.appVersion, cqlFile.getName, md5Hash(cqlFile).toString, "", getCurrentDate, 0, "success"))
     } catch {
       case ex: Exception =>
         logger.error(
