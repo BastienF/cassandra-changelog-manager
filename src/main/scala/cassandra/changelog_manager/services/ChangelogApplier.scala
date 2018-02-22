@@ -14,17 +14,17 @@ import scala.util.{Success, Try}
 
 object ChangelogApplier extends ChangelogApplier
 
-protected abstract class ChangelogApplier extends LazyLogging {
+abstract class ChangelogApplier extends LazyLogging {
 
-  def applyChangelogs(cassandraDatabase: CassandraDatabase, changelogDir: File): Boolean = {
+  def applyChangelogs(cassandraDatabase: CassandraDatabase, changelogDir: File, alteredScripts: Set[String]): Boolean = {
     cassandraDatabase.schemaVersionRepo.initTable()
     val appliedVersions = cassandraDatabase.schemaVersionRepo.getAll(cassandraDatabase.appVersion)
     val cqlFiles = currentChangelogVersionDir(changelogDir).listFiles.filter(_.isFile).toList
-    val alteredScripts = Try(getAlteredExecutedScripts(cqlFiles, appliedVersions))
+    val alteredScriptsInError = Try(getAlteredExecutedScripts(cqlFiles, appliedVersions, alteredScripts))
 
 
-    if (alteredScripts.get.nonEmpty) {
-      alteredScripts.get.foreach(fileNameStatus =>
+    if (alteredScriptsInError.get.nonEmpty) {
+      alteredScriptsInError.get.foreach(fileNameStatus =>
         if (fileNameStatus._2.isSuccess)
           logger.error(s"checksum differs for: ${fileNameStatus._1}")
         else
@@ -51,10 +51,11 @@ protected abstract class ChangelogApplier extends LazyLogging {
   }
 
   @throws[IOException]
-  protected def getAlteredExecutedScripts(cqlFiles: List[File], appliedVersions: Set[SchemaVersion]): Set[(String, Try[Boolean])] = {
+  protected def getAlteredExecutedScripts(cqlFiles: List[File], appliedVersions: Set[SchemaVersion], alteredScripts: Set[String]): Set[(String, Try[Boolean])] = {
     appliedVersions
       .map(appliedVersion =>
         cqlFiles
+          .filterNot(f => alteredScripts.contains(f.getName))
           .find(f => f.getName.equals(appliedVersion.script_name))
           .map(f => (f.getName, Try(md5Hash(f).toString.equals(appliedVersion.checksum))))
           .getOrElse(appliedVersion.script_name, Success(true)))

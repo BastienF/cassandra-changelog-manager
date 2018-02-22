@@ -10,8 +10,8 @@ libraryDependencies ++= Seq(
   "ch.qos.logback" % "logback-classic" % "1.2.3",
   "com.typesafe.scala-logging" %% "scala-logging" % "3.7.2",
   "org.scalatest" % "scalatest_2.12" % "3.0.4" % "test",
-  "org.mockito" % "mockito-core" % "2.12.0" % "test"
-
+  "org.mockito" % "mockito-core" % "2.12.0" % "test",
+  "com.iheart" %% "ficus" % "1.4.3"
 )
 
 parallelExecution in Test := false
